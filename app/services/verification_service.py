@@ -6,7 +6,6 @@ from app.core.config import settings
 from app.domain.enums import VerificationStatus
 import math
 
-# AI providers
 from app.providers.paddle_ocr import analyze as paddle_analyze
 from app.providers.gemini_vision import analyze as gemini_analyze
 from app.providers.claude_vision import analyze as claude_analyze
@@ -31,7 +30,6 @@ class VerificationService:
         else:
             sanitized = None
 
-        # AI analysis: OCR (Paddle) and Vision (Claude primary, Gemini fallback)
         ocr_task = None
         vision_task = None
         if file_valid:
@@ -62,8 +60,7 @@ class VerificationService:
                         if (g_res.get("confidence", 0.0) or 0.0) > (vision_res.get("confidence", 0.0) or 0.0):
                             vision_res = g_res
                     except Exception:
-                        # Claude already produced a real (if low-confidence) result, so
-                        # this is not a total vision outage - just no fallback available.
+     
                         logger.exception("Gemini fallback vision task failed or timed out")
             except Exception:
                 logger.exception("Claude vision task failed or timed out, falling back to Gemini")
@@ -75,9 +72,6 @@ class VerificationService:
                     vision_failed = True
         logger.info("signal[vision]: confidence=%.3f event_relation=%s", vision_res.get("confidence", 0.0) or 0.0, vision_res.get("event_relation"))
 
-        # If the image itself is readable but every AI provider (OCR + both vision
-        # fallbacks) failed outright, we have no real signal to judge on - that's an
-        # infrastructure outage, not "insufficient evidence" the user caused.
         if file_valid and ocr_failed and vision_failed:
             raise AIProvidersUnavailableError("OCR and Vision providers all failed or timed out")
 
@@ -98,7 +92,6 @@ class VerificationService:
             "vision": vision_res,
         }
 
-        # Location/distance signals: if event contains venue/user coords, compute distance
         try:
             vlat = float(event_payload.get("venue_lat")) if event_payload.get("venue_lat") is not None else None
             vlng = float(event_payload.get("venue_lng")) if event_payload.get("venue_lng") is not None else None
@@ -109,7 +102,6 @@ class VerificationService:
             vlat = vlng = ulat = ulng = radius = None
 
         if vlat is not None and vlng is not None and ulat is not None and ulng is not None:
-            # haversine distance in meters
             def haversine(lat1, lon1, lat2, lon2):
                 R = 6371000.0
                 phi1 = math.radians(lat1)

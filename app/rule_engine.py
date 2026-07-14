@@ -6,8 +6,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Word/number tokens (Korean + Latin + digits). Splitting on this means
-# hyphens, punctuation, and inconsistent whitespace never break a match.
 _TOKEN_RE = re.compile(r"[0-9a-zA-Z가-힣]+")
 
 
@@ -34,13 +32,10 @@ def _keyword_match_score(keyword: str, ocr_text: str) -> float:
 def decide(signals: Dict[str, Any], config: Dict[str, Any] = None) -> Dict[str, Any]:
     reason_codes: List[str] = []
 
-    # An unreadable file outranks every other signal: if we can't even decode
-    # the image, distance/quality/AI signals about it are meaningless.
     if not signals.get("file", {}).get("valid", True):
         reason_codes.append(ReasonCode.INVALID_FILE.value)
         return {"status": VerificationStatus.REJECTED.value, "reason_codes": reason_codes, "confidence": 0.0}
 
-    # If location signals are provided, reject immediately when out of radius
     loc = signals.get("location")
     if loc is not None:
         if not loc.get("within_radius", True):
@@ -74,8 +69,6 @@ def decide(signals: Dict[str, Any], config: Dict[str, Any] = None) -> Dict[str, 
     vision_conf = vision.get("confidence") or 0.0
     vision_relation = vision.get("event_relation")
 
-    # vision_conf comes straight from an external model's JSON reply and isn't
-    # guaranteed to stay within [0, 1], so clamp before it reaches the API response.
     confidence = max(0.0, min(1.0, max(ocr_score, vision_conf)))
     logger.info(
         "rule_engine: ocr_score=%.3f keyword_scores=%s vision_conf=%.3f vision_relation=%s",

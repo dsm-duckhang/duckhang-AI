@@ -1,10 +1,11 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # AI / model settings
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     GEMINI_API_KEY: str | None = None
-    GEMINI_VISION_MODEL: str | None = "gemini-2.5-flash"
+    GEMINI_VISION_MODEL: str | None = "models/gemini-2.5-flash"
 
     CLAUDE_API_KEY: str | None = None
     CLAUDE_VISION_MODEL: str | None = "claude-haiku-4-5-20251001"
@@ -19,10 +20,6 @@ class Settings(BaseSettings):
     MIN_IMAGE_SHORT_SIDE: int = 400
     BLUR_THRESHOLD: float = 100.0
     DARKNESS_THRESHOLD: float = 40.0
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()

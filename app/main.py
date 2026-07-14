@@ -12,10 +12,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # PaddleOCR lazily loads its detector/recognizer models on first use. On a
-    # stateless/recycled instance that first use is the first real request,
-    # and cold-start loading can exceed the per-request OCR timeout, silently
-    # discarding a correct OCR result. Warm it up before serving traffic.
     try:
         await asyncio.to_thread(warmup_paddle_ocr, getattr(settings, "OCR_LANGUAGE", "korean"))
     except Exception:

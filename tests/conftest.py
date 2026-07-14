@@ -12,9 +12,6 @@ import app.main as main_module
 
 @pytest.fixture
 def client(monkeypatch):
-    # PaddleOCR warmup blocks on real model loading/downloads; the endpoint
-    # tests mock OCR/vision entirely, so skip it to keep the suite fast and
-    # network-independent.
     monkeypatch.setattr(main_module, "warmup_paddle_ocr", lambda *a, **kw: None)
     with TestClient(main_module.app) as c:
         yield c

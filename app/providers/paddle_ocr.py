@@ -19,11 +19,7 @@ def _init_paddle(language: str = "korean"):
             from paddleocr import PaddleOCR
         except Exception as e:
             raise RuntimeError("PaddleOCR is not installed. Install paddleocr and paddlepaddle first.") from e
-        # NOTE: PaddleOCR 3.x renamed `use_angle_cls` -> `use_textline_orientation`
-        # and its `.ocr()` shim forwards to `.predict()`, which does NOT accept a
-        # `cls=` kwarg (that caused every call to raise TypeError and get swallowed).
-        # `enable_mkldnn=False` works around a NotImplementedError raised by the
-        # oneDNN backend for the PP-OCRv5 server detection model on this host.
+        
         _paddle_ocr = PaddleOCR(
             lang=language,
             use_doc_orientation_classify=False,
