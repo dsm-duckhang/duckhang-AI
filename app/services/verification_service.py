@@ -15,6 +15,13 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 
+class AIProvidersUnavailableError(Exception):
+    """Raised when OCR and Vision both fail outright (timeout/exception), as
+    opposed to legitimately running and finding no match. Callers should
+    surface this as a retryable server error rather than a verification
+    rejection, since we have no real signal to judge the photo on."""
+
+
 class VerificationService:
     async def verify_event_image(self, event_payload: Dict[str, Any], image_bytes: bytes) -> Dict[str, Any]:
         file_valid, file_error = validate_image_bytes(image_bytes)
@@ -35,12 +42,15 @@ class VerificationService:
 
         ocr_res = {"text": ""}
         vision_res = {"confidence": 0.0}
+        ocr_failed = False
+        vision_failed = False
         if ocr_task:
             try:
                 ocr_res = await asyncio.wait_for(ocr_task, timeout=45.0)
             except Exception:
                 logger.exception("OCR task failed or timed out")
                 ocr_res = {"text": ""}
+                ocr_failed = True
         logger.info("signal[ocr]: text_len=%d text=%r", len(ocr_res.get("text") or ""), (ocr_res.get("text") or "")[:200])
 
         if vision_task:
@@ -52,6 +62,8 @@ class VerificationService:
                         if (g_res.get("confidence", 0.0) or 0.0) > (vision_res.get("confidence", 0.0) or 0.0):
                             vision_res = g_res
                     except Exception:
+                        # Claude already produced a real (if low-confidence) result, so
+                        # this is not a total vision outage - just no fallback available.
                         logger.exception("Gemini fallback vision task failed or timed out")
             except Exception:
                 logger.exception("Claude vision task failed or timed out, falling back to Gemini")
@@ -60,7 +72,14 @@ class VerificationService:
                 except Exception:
                     logger.exception("Gemini vision task failed or timed out")
                     vision_res = {"confidence": 0.0}
+                    vision_failed = True
         logger.info("signal[vision]: confidence=%.3f event_relation=%s", vision_res.get("confidence", 0.0) or 0.0, vision_res.get("event_relation"))
+
+        # If the image itself is readable but every AI provider (OCR + both vision
+        # fallbacks) failed outright, we have no real signal to judge on - that's an
+        # infrastructure outage, not "insufficient evidence" the user caused.
+        if file_valid and ocr_failed and vision_failed:
+            raise AIProvidersUnavailableError("OCR and Vision providers all failed or timed out")
 
         quality_signals = {"ok": True}
         if file_valid:

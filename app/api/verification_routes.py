@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from app.schemas import EventPayload, VerifyResponse
-from app.services.verification_service import VerificationService
+from app.services.verification_service import VerificationService, AIProvidersUnavailableError
 
 router = APIRouter()
 
@@ -20,6 +20,8 @@ async def verify(event: str = Form(...), image: UploadFile = File(...)):
     svc = VerificationService()
     try:
         return await svc.verify_event_image(event_payload.model_dump(), image_bytes)
+    except AIProvidersUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:

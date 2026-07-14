@@ -1,5 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
+
+from app.domain.enums import ReasonCode, VerificationStatus
 
 
 class EventPayload(BaseModel):
@@ -22,7 +24,7 @@ class EventPayload(BaseModel):
 
 
 class VerifyResponse(BaseModel):
-    status: str
-    confidence: float
-    reasons: List[str]
+    status: VerificationStatus
+    confidence: float = Field(ge=0.0, le=1.0)
+    reasons: List[ReasonCode]
     user_message: Optional[str] = None
