@@ -7,7 +7,6 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Lazy import PaddleOCR to avoid heavy import at module load
 _paddle_ocr = None
 _paddle_lock = asyncio.Lock()
 

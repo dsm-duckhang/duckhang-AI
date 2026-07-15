@@ -54,14 +54,6 @@ class VerificationService:
         if vision_task:
             try:
                 vision_res = await asyncio.wait_for(vision_task, timeout=12.0)
-                if (vision_res.get("confidence", 0.0) or 0.0) < settings.VISION_MEDIUM_CONFIDENCE:
-                    try:
-                        g_res = await asyncio.wait_for(gemini_analyze(sanitized or image_bytes, event_payload), timeout=12.0)
-                        if (g_res.get("confidence", 0.0) or 0.0) > (vision_res.get("confidence", 0.0) or 0.0):
-                            vision_res = g_res
-                    except Exception:
-     
-                        logger.exception("Gemini fallback vision task failed or timed out")
             except Exception:
                 logger.exception("Claude vision task failed or timed out, falling back to Gemini")
                 try:

@@ -2,6 +2,22 @@ import pytest
 
 BASE_EVENT = {"category": "FANMEETING", "title": "테스트 행사"}
 
+SPRING_EVENT = {
+    "title": "덕질 콘서트",
+    "category": "CONCERT",
+    "categoryLabel": "콘서트",
+    "description": "첫 단독 콘서트",
+    "venueName": "올림픽공원 체조경기장",
+    "address": "서울시 송파구",
+    "relatedLink": "https://example.com/events/duckhang-concert",
+    "userLatitude": 37.234,
+    "userLongitude": 127.808,
+    "latitude": 37.5211,
+    "longitude": 127.1229,
+    "startAt": "2026-09-01T10:00:00Z",
+    "endAt": "2026-09-01T20:00:00Z",
+}
+
 
 def test_valid_multipart_request_returns_200(client, mock_providers, post_verify, sharp_image_bytes):
     resp = post_verify(BASE_EVENT, sharp_image_bytes)
@@ -10,6 +26,36 @@ def test_valid_multipart_request_returns_200(client, mock_providers, post_verify
     body = resp.json()
     assert body["status"] in {"VERIFIED", "ADDITIONAL_CAPTURE_REQUIRED", "REJECTED"}
     assert isinstance(body["reasons"], list)
+
+
+def test_spring_event_payload_with_camel_case_fields_returns_200(
+    client,
+    mock_providers,
+    post_verify,
+    sharp_image_bytes,
+):
+    mock_providers["paddle"].return_value = {"text": "덕질 콘서트 올림픽공원 체조경기장"}
+
+    resp = post_verify(SPRING_EVENT, sharp_image_bytes)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "VERIFIED"
+    assert "OCR_STRONG_MATCH" in body["reasons"]
+
+
+def test_spring_user_location_fields_map_to_radius_check(client, mock_providers, post_verify, sharp_image_bytes):
+    event = {
+        **SPRING_EVENT,
+        "radiusM": 100,
+    }
+
+    resp = post_verify(event, sharp_image_bytes)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "REJECTED"
+    assert "OUT_OF_RADIUS" in body["reasons"]
 
 
 def test_malformed_event_json_returns_400(client, post_verify, sharp_image_bytes):

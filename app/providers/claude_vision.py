@@ -87,24 +87,20 @@ async def analyze(image_bytes: bytes, event_config: Dict[str, Any] = None) -> Di
         ],
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, headers=headers, json=body)
-            resp.raise_for_status()
-            data = resp.json()
-            text_parts = [
-                block.get("text", "")
-                for block in data.get("content", [])
-                if isinstance(block, dict) and block.get("type") == "text"
-            ]
-            reply_text = "\n".join(text_parts)
-            parsed = _parse_model_json(reply_text)
-            logger.info(
-                "claude_vision: confidence=%.3f event_relation=%s",
-                parsed["confidence"],
-                parsed.get("event_relation"),
-            )
-            return {**parsed, "raw": data}
-    except Exception:
-        logger.exception("claude_vision: request failed")
-        return {"confidence": 0.0}
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(url, headers=headers, json=body)
+        resp.raise_for_status()
+        data = resp.json()
+        text_parts = [
+            block.get("text", "")
+            for block in data.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        reply_text = "\n".join(text_parts)
+        parsed = _parse_model_json(reply_text)
+        logger.info(
+            "claude_vision: confidence=%.3f event_relation=%s",
+            parsed["confidence"],
+            parsed.get("event_relation"),
+        )
+        return {**parsed, "raw": data}
